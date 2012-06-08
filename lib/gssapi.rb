@@ -15,4 +15,5 @@ end
 
 require 'gssapi/exceptions'
 require 'gssapi/lib_gssapi'
+require 'gssapi/lib_krb5'
 require 'gssapi/simple'
