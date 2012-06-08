@@ -10,6 +10,7 @@ module GSSAPI
   class Simple
 
     attr_reader :context
+    attr_reader :delegated_creds
 
     # Initialize a new GSSAPI::Simple object
     # @param [String] host_name the fully qualified host name
@@ -26,6 +27,7 @@ module GSSAPI
       @context = nil # the security context
       @scred = nil # the service credentials.  really only used for the server-side via acquire_credentials
       set_keytab(keytab) unless keytab.nil?
+      @delegated_creds = nil
     end
 
 
@@ -113,6 +115,7 @@ module GSSAPI
       in_tok.value = in_token
       out_tok = GSSAPI::LibGSSAPI::ManagedGssBufferDesc.new
       ret_flags = FFI::MemoryPointer.new :OM_uint32
+      deleg_creds = FFI::MemoryPointer.new :pointer
 
       maj_stat = LibGSSAPI.gss_accept_sec_context(min_stat,
                                                   ctx,
@@ -123,10 +126,13 @@ module GSSAPI
                                                   mech,
                                                   out_tok.pointer,
                                                   ret_flags,
-                                                  nil, nil)
+                                                  nil,
+                                                  deleg_creds)
 
       raise GssApiError.new(maj_stat, min_stat), "gss_accept_sec_context did not return GSS_S_COMPLETE" if maj_stat > 1
 
+      # XXXX - check ret_flags that credentials can really be forwarded
+      @delegated_creds = LibGSSAPI::GssCredIdT.new(deleg_creds.get_pointer(0))
       @context = LibGSSAPI::GssCtxIdT.new(ctx.get_pointer(0))
       out_tok.length > 0 ? out_tok.value : true
     end
